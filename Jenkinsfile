@@ -1,40 +1,30 @@
+
 pipeline {
     agent any
 
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/vikash1045/aws-devops-cicd-project.git'
+                checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Building Employee Management Application'
-                sh 'ls -la'
+                sh 'docker build -t employee-management-app:latest .'
             }
         }
 
-        stage('Test') {
+        stage('Test Docker Container') {
             steps {
-                sh 'test -f app.py'
-                sh 'test -f Dockerfile'
-                sh 'test -f requirements.txt'
-                echo 'All project files verified successfully!'
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh 'docker build -t employee-management-app:${BUILD_NUMBER} .'
-                sh 'docker tag employee-management-app:${BUILD_NUMBER} employee-management-app:latest'
-            }
-        }
-
-        stage('Complete') {
-            steps {
-                echo 'CI/CD Pipeline completed successfully!'
+                sh '''
+                    docker rm -f employee-test || true
+                    docker run -d --name employee-test -p 5003:5000 employee-management-app:latest
+                    sleep 5
+                    docker ps
+                    docker stop employee-test
+                    docker rm employee-test
+                '''
             }
         }
     }

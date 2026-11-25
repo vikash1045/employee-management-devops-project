@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Management System</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f3f5f9;
+    color: #26334d;
+}
+
+header {
+    background: #172554;
+    color: white;
+    padding: 25px 6%;
+}
+
+header h2 { margin: 0; }
+
+main {
+    max-width: 1100px;
+    margin: 35px auto;
+    padding: 0 20px;
+}
+
+.cards {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    flex: 1;
+    min-width: 220px;
+    box-shadow: 0 3px 12px #0000000d;
+}
+
+.number {
+    font-size: 30px;
+    font-weight: bold;
+    color: #2563eb;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 30px 0 18px;
+    flex-wrap: wrap;
+}
+
+input {
+    padding: 12px;
+    border: 1px solid #d5dbea;
+    border-radius: 7px;
+}
+
+button {
+    padding: 11px 17px;
+    border: 0;
+    border-radius: 7px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+}
+
+.delete { background: #dc3545; }
+
+.table-card {
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 650px;
+}
+
+th, td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #edf0f5;
+}
+
+th { background: #eaf0ff; }
+
+.profile {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h2>Employee Management System</h2>
+    <p>Admin Dashboard | AWS DevOps Project</p>
+</header>
+
+<main>
+
+<div class="cards">
+    <div class="card">
+        <p>Total Employees</p>
+        <div class="number" id="total">0</div>
+    </div>
+
+    <div class="card">
+        <p>Application Status</p>
+        <div class="number">Active</div>
+    </div>
+</div>
+
+<div class="toolbar">
+    <input id="search" placeholder="Search employee..." oninput="renderEmployees()">
+    <button onclick="addEmployee()">+ Add Employee</button>
+</div>
+
+<div class="table-card">
+<table>
+<thead>
+<tr>
+    <th>Photo</th>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Role</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody id="employeeList"></tbody>
+</table>
+</div>
+
+</main>
+
+<script>
+
+let employees = [];
+
+async function loadEmployees() {
+    try {
+        const response = await fetch("/employees");
+        if (!response.ok) throw new Error("Unable to load employees");
+        employees = await response.json();
+        renderEmployees();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function renderEmployees() {
+
+    const search = document.getElementById("search").value.toLowerCase();
+
+    const filtered = employees.filter(e =>
+        e.name.toLowerCase().includes(search) ||
+        e.role.toLowerCase().includes(search)
+    );
+
+    document.getElementById("total").textContent = employees.length;
+
+    const list = document.getElementById("employeeList");
+    list.innerHTML = "";
+
+    filtered.forEach(e => {
+
+        const row = document.createElement("tr");
+
+        const photoCell = document.createElement("td");
+        const photo = document.createElement("img");
+        photo.src = e.photo || "https://randomuser.me/api/portraits/lego/1.jpg";
+        photo.alt = e.name;
+        photo.className = "profile";
+        photoCell.appendChild(photo);
+
+        const idCell = document.createElement("td");
+        idCell.textContent = e.id;
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = e.name;
+
+        const roleCell = document.createElement("td");
+        roleCell.textContent = e.role;
+
+        const actionCell = document.createElement("td");
+        const button = document.createElement("button");
+        button.textContent = "Delete";
+        button.className = "delete";
+        button.onclick = () => deleteEmployee(e.id);
+        actionCell.appendChild(button);
+
+        row.append(photoCell, idCell, nameCell, roleCell, actionCell);
+        list.appendChild(row);
+    });
+}
+
+async function addEmployee() {
+
+    const name = prompt("Enter employee name:");
+    if (!name || !name.trim()) return;
+
+    const role = prompt("Enter employee role:");
+    if (!role || !role.trim()) return;
+
+    const response = await fetch("/employees", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            name: name.trim(),
+            role: role.trim()
+        })
+    });
+
+    if (response.ok) {
+        await loadEmployees();
+        alert("Employee added successfully!");
+    } else {
+        alert("Unable to add employee");
+    }
+}
+
+async function deleteEmployee(id) {
+
+    if (!confirm("Are you sure you want to delete this employee?")) return;
+
+    const response = await fetch(`/employees/${id}`, {
+        method: "DELETE"
+    });
+
+    if (response.ok) {
+        await loadEmployees();
+        alert("Employee deleted successfully!");
+    } else {
+        alert("Unable to delete employee");
+    }
+}
+
+loadEmployees();
+
+</script>
+
+</body>
+</html>
