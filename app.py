@@ -1,67 +1,92 @@
 
+import os
+from urllib.parse import urlparse, unquote
 from flask import Flask, jsonify, render_template, request
-import sqlite3
+from dotenv import load_dotenv
+import pg8000.dbapi
+
+load_dotenv()
 
 app = Flask(__name__)
 
-DATABASE = "employees.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is missing. Check your .env file.")
+
+    url = urlparse(DATABASE_URL)
+
+    return pg8000.dbapi.connect(
+        user=unquote(url.username),
+        password=unquote(url.password),
+        host=url.hostname,
+        port=url.port or 5432,
+        database=url.path.lstrip("/"),
+        ssl_context=True
+    )
+
 
 def initialize_database():
     conn = get_db()
+    try:
+        cursor = conn.cursor()
 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            photo TEXT
-        )
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS employees (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL,
+                photo TEXT
+            )
+        """)
 
-    count = conn.execute(
-        "SELECT COUNT(*) FROM employees"
-    ).fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM employees")
+        count = cursor.fetchone()[0]
 
-    if count == 0:
-        employees = [
-            ("Vikash", "DevOps Engineer", "https://randomuser.me/api/portraits/men/1.jpg"),
-            ("Arun", "Cloud Engineer", "https://randomuser.me/api/portraits/men/2.jpg"),
-            ("Karthik", "Python Developer", "https://randomuser.me/api/portraits/men/3.jpg"),
-            ("Praveen", "Software Engineer", "https://randomuser.me/api/portraits/men/4.jpg"),
-            ("Suresh", "System Administrator", "https://randomuser.me/api/portraits/men/5.jpg"),
-            ("Manoj", "AWS Engineer", "https://randomuser.me/api/portraits/men/6.jpg"),
-            ("Dinesh", "Network Engineer", "https://randomuser.me/api/portraits/men/7.jpg"),
-            ("Surya", "Frontend Developer", "https://randomuser.me/api/portraits/men/8.jpg"),
-            ("Rahul", "Backend Developer", "https://randomuser.me/api/portraits/men/9.jpg"),
-            ("Ajith", "Database Administrator", "https://randomuser.me/api/portraits/men/10.jpg")
-        ]
+        if count == 0:
+            employees = [
+                ("Vikash", "DevOps Engineer", "https://randomuser.me/api/portraits/men/1.jpg"),
+                ("Arun", "Cloud Engineer", "https://randomuser.me/api/portraits/men/2.jpg"),
+                ("Karthik", "Python Developer", "https://randomuser.me/api/portraits/men/3.jpg"),
+                ("Praveen", "Software Engineer", "https://randomuser.me/api/portraits/men/4.jpg"),
+                ("Suresh", "System Administrator", "https://randomuser.me/api/portraits/men/5.jpg"),
+                ("Manoj", "AWS Engineer", "https://randomuser.me/api/portraits/men/6.jpg"),
+                ("Dinesh", "Network Engineer", "https://randomuser.me/api/portraits/men/7.jpg"),
+                ("Surya", "Frontend Developer", "https://randomuser.me/api/portraits/men/8.jpg"),
+                ("Rahul", "Backend Developer", "https://randomuser.me/api/portraits/men/9.jpg"),
+                ("Ajith", "Database Administrator", "https://randomuser.me/api/portraits/men/10.jpg")
+            ]
 
-        conn.executemany(
-            "INSERT INTO employees (name, role, photo) VALUES (?, ?, ?)",
-            employees
-        )
+            cursor.executemany(
+                "INSERT INTO employees (name, role, photo) VALUES (%s, %s, %s)",
+                employees
+            )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 @app.route("/employees", methods=["GET"])
 def get_employees():
     conn = get_db()
-    employees = conn.execute(
-        "SELECT * FROM employees ORDER BY id"
-    ).fetchall()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM employees ORDER BY id")
+        rows = cursor.fetchall()
+        columns = [column[0] for column in cursor.description]
+        employees = [dict(zip(columns, row)) for row in rows]
+        return jsonify(employees)
+    finally:
+        conn.close()
 
-    return jsonify([dict(e) for e in employees])
 
 @app.route("/employees", methods=["POST"])
 def add_employee():
@@ -71,33 +96,53 @@ def add_employee():
         return jsonify({"error": "Name and role are required"}), 400
 
     conn = get_db()
-    cursor = conn.execute(
-        "INSERT INTO employees (name, role, photo) VALUES (?, ?, ?)",
-        (data["name"].strip(), data["role"].strip(),
-         "https://randomuser.me/api/portraits/men/11.jpg")
-    )
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO employees (name, role, photo)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (
+                data["name"].strip(),
+                data["role"].strip(),
+                "https://randomuser.me/api/portraits/men/11.jpg"
+            )
+        )
+        employee_id = cursor.fetchone()[0]
+        conn.commit()
 
-    conn.commit()
-    employee_id = cursor.lastrowid
-    conn.close()
+        return jsonify({
+            "message": "Employee added",
+            "id": employee_id
+        }), 201
+    finally:
+        conn.close()
 
-    return jsonify({"message": "Employee added", "id": employee_id}), 201
 
 @app.route("/employees/<int:employee_id>", methods=["DELETE"])
 def delete_employee(employee_id):
     conn = get_db()
-    cursor = conn.execute(
-        "DELETE FROM employees WHERE id = ?", (employee_id,)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM employees WHERE id = %s",
+            (employee_id,)
+        )
 
-    if cursor.rowcount == 0:
-        return jsonify({"error": "Employee not found"}), 404
+        if cursor.rowcount == 0:
+            conn.rollback()
+            return jsonify({"error": "Employee not found"}), 404
 
-    return jsonify({"message": "Employee deleted"})
+        conn.commit()
+        return jsonify({"message": "Employee deleted"})
+    finally:
+        conn.close()
+
 
 initialize_database()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
