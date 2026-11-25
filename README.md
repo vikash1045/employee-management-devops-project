@@ -2,9 +2,9 @@
 
 ## 📌 Project Overview
 
-The Employee Management System is a web-based application developed using Python Flask and PostgreSQL. It allows users to manage employee records through a simple dashboard.
+The Employee Management System is a web-based application developed using Python Flask and PostgreSQL. It allows users to manage employee records through a simple and user-friendly dashboard.
 
-This project demonstrates DevOps practices including GitHub version control, Docker containerization, Jenkins CI/CD pipeline, PostgreSQL database integration, and cloud deployment using Render.
+This project demonstrates DevOps practices such as GitHub version control, Docker containerization, Jenkins CI/CD pipeline, PostgreSQL database integration, and cloud deployment using Render.
 
 ## 🛠️ Technologies Used
 
@@ -12,13 +12,13 @@ This project demonstrates DevOps practices including GitHub version control, Doc
 |---|---|
 | Python | Backend programming |
 | Flask | Web application framework |
-| PostgreSQL | Database |
-| Neon | Cloud PostgreSQL hosting |
-| HTML, CSS, JavaScript | Frontend |
+| PostgreSQL | Relational database |
+| Neon | Cloud PostgreSQL database hosting |
+| HTML, CSS, JavaScript | Frontend development |
 | Docker | Application containerization |
-| Jenkins | CI/CD automation |
-| Git & GitHub | Version control |
-| Render | Cloud deployment |
+| Jenkins | CI/CD pipeline automation |
+| Git & GitHub | Version control and source code management |
+| Render | Cloud application deployment |
 
 ## ✨ Application Features
 
@@ -27,6 +27,7 @@ This project demonstrates DevOps practices including GitHub version control, Doc
 - Delete employee records
 - Employee management dashboard
 - PostgreSQL database integration
+- Persistent employee data storage
 
 ## ⚙️ DevOps Implementation
 
@@ -34,7 +35,8 @@ This project demonstrates DevOps practices including GitHub version control, Doc
 Used Git and GitHub to manage and maintain application source code.
 
 ### 2. CI/CD Pipeline
-Created a Jenkins pipeline to automate:
+Configured a Jenkins pipeline to automate the following stages:
+
 - Checkout Code
 - Build Docker Image
 - Run Tests
@@ -46,7 +48,7 @@ Created a Dockerfile to build and run the Flask application inside a Docker cont
 Integrated Neon PostgreSQL to store and manage employee information.
 
 ### 5. Cloud Deployment
-Deployed the Flask application on Render and connected it to the Neon PostgreSQL database.
+Deployed the Flask application on Render using Docker and connected it to the Neon PostgreSQL database.
 
 ## 🏗️ Project Architecture
 
@@ -97,19 +99,18 @@ https://github.com/vikash1045/employee-management-devops-project
 
 **Live Application:**
 
-https://aws-devops-cicd-project-1.onrender.com
+https://employee-management-neon-devops.onrender.com
 
 ## 🎯 Learning Outcomes
 
 - Developed a Flask-based web application.
 - Integrated PostgreSQL using Neon.
 - Implemented Docker containerization.
-- Configured Jenkins CI/CD pipeline.
+- Configured a Jenkins CI/CD pipeline.
 - Managed source code using Git and GitHub.
 - Deployed a web application using Render.
+- Learned cloud application deployment and database integration.
 
 ## 👨‍💻 Author
 
 **R. Padmavikash**
-
-GitHub: https://github.com/vikash1045
